@@ -10,7 +10,6 @@ pub struct Participant {
     pub name: String,
     pub id: i32,
     pub read_stream: std::net::TcpStream,
-    pub write_stream: std::net::TcpStream,
     pub number_of_messages: i32,
     pub sender: SyncSender<Message>,
 }

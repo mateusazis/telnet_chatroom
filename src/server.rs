@@ -43,19 +43,16 @@ impl Server {
         };
 
         let id = rand::random::<i32>();
-
         let write_stream = stream.try_clone().unwrap();
-        let write_stream2 = stream.try_clone().unwrap();
 
         let part = Participant {
             name,
             id,
             read_stream: stream,
-            write_stream,
             number_of_messages: 0,
             sender: self.sender.clone(),
         };
-        self.write_streams.insert(id, write_stream2);
+        self.write_streams.insert(id, write_stream);
         Ok(part)
     }
 }
