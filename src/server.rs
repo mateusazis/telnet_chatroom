@@ -45,6 +45,16 @@ impl Server {
 
         let id = rand::random::<i32>();
 
+        let mut initial_message = format!("Welcome to the chat room, {}!", name);
+        if self.write_streams.is_empty() {
+            initial_message += " There is no else here. You can send new messages anytime.";
+        } else {
+            let suffix = format!("There are {} other people here.", self.write_streams.len());
+            initial_message.push_str(suffix.as_str());
+        }
+        initial_message += "\n";
+        write_stream.write(initial_message.as_bytes())?;
+
         let part = Participant::new(name, id, lines, self.sender.clone());
         self.write_streams.insert(id, write_stream);
         Ok(part)
