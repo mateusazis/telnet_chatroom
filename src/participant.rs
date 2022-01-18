@@ -3,15 +3,30 @@ use std::sync::mpsc::SyncSender;
 
 pub struct Message {
     pub content: String,
-    pub author_id: i32,
+    pub author: ParticipantInfo,
+}
+
+#[derive(Debug)]
+pub struct ParticipantInfo {
+    pub name: String,
+    pub id: i32,
+    pub number_of_messages: i32,
+}
+
+impl Clone for ParticipantInfo {
+    fn clone(&self) -> Self {
+        ParticipantInfo {
+            name: self.name.clone(),
+            id: self.id,
+            number_of_messages: self.number_of_messages,
+        }
+    }
 }
 
 #[derive(Debug)]
 pub struct Participant {
-    pub name: String,
-    pub id: i32,
+    pub info: ParticipantInfo,
     pub read_lines: Lines<BufReader<std::net::TcpStream>>,
-    pub number_of_messages: i32,
     pub sender: SyncSender<Message>,
 }
 
@@ -23,10 +38,12 @@ impl Participant {
         sender: SyncSender<Message>,
     ) -> Participant {
         Participant {
-            name,
-            id,
+            info: ParticipantInfo {
+                name,
+                id,
+                number_of_messages: 0,
+            },
             sender,
-            number_of_messages: 0,
             read_lines,
         }
     }
@@ -40,15 +57,15 @@ impl Participant {
         while !line.eq("quit") {
             let msg_out = format!(
                 "{} ({}): {}\n",
-                self.name,
-                self.number_of_messages + 1,
+                self.info.name,
+                self.info.number_of_messages + 1,
                 line
             );
-            self.number_of_messages += 1;
+            self.info.number_of_messages += 1;
             self.sender
                 .send(Message {
                     content: msg_out,
-                    author_id: self.id,
+                    author: self.info.clone(),
                 })
                 .unwrap();
             line = self.read_line().expect("reading line");

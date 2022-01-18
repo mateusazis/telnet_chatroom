@@ -22,7 +22,7 @@ fn serv() -> std::io::Result<usize> {
 
                 participant.run_loop().expect("run loop");
 
-                server.lock().unwrap().remove(&participant.id);
+                server.lock().unwrap().remove(&participant.info.id);
             });
             threads.push(t);
         }

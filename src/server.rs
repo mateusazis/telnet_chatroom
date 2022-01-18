@@ -1,5 +1,6 @@
 use crate::participant::Message;
 use crate::participant::Participant;
+use crate::participant::ParticipantInfo;
 use std::clone::Clone;
 use std::collections::HashMap;
 use std::io::BufRead;
@@ -11,6 +12,7 @@ use std::sync::mpsc::SyncSender;
 pub struct Server {
     sender: SyncSender<Message>,
     write_streams: HashMap<i32, TcpStream>,
+    participants: HashMap<i32, ParticipantInfo>,
 }
 
 impl Server {
@@ -18,21 +20,24 @@ impl Server {
         Server {
             sender,
             write_streams: HashMap::new(),
+            participants: HashMap::new(),
         }
     }
 
     pub fn handle_incoming_messages(&mut self, message: Message) -> std::io::Result<usize> {
         for (id, write_stream) in self.write_streams.iter_mut() {
-            if id != &message.author_id {
+            if id != &message.author.id {
                 let content = &message.content;
                 write_stream.write(content.as_bytes())?;
             }
         }
+        self.participants.insert(message.author.id, message.author);
         Ok(0)
     }
 
     pub fn remove(&mut self, id: &i32) {
         self.write_streams.remove(id).unwrap();
+        self.participants.remove(id).unwrap();
     }
 
     pub fn handle_client(&mut self, stream: std::net::TcpStream) -> std::io::Result<Participant> {
@@ -49,14 +54,26 @@ impl Server {
         if self.write_streams.is_empty() {
             initial_message += " There is no else here. You can send new messages anytime.";
         } else {
-            let suffix = format!("There are {} other people here.", self.write_streams.len());
-            initial_message.push_str(suffix.as_str());
+            initial_message.push_str(
+                format!("There are {} other people here: ", self.write_streams.len()).as_str(),
+            );
+            for (_, participant) in self.participants.iter() {
+                initial_message.push_str(
+                    format!(
+                        "\n\t{} ({})",
+                        participant.name, participant.number_of_messages
+                    )
+                    .as_str(),
+                );
+            }
+            initial_message.push('\n');
         }
         initial_message += "\n";
         write_stream.write(initial_message.as_bytes())?;
 
         let part = Participant::new(name, id, lines, self.sender.clone());
         self.write_streams.insert(id, write_stream);
+        self.participants.insert(id, part.info.clone());
         Ok(part)
     }
 }
