@@ -24,7 +24,6 @@ impl Participant {
     pub fn run_loop(&mut self) -> std::io::Result<usize> {
         let mut line = self.read_line().expect("reading line");
         while !line.starts_with("quit") {
-            // p.number_of_messages += 1;
             let msg_out = format!(
                 "{} ({}): {}\n",
                 self.name,

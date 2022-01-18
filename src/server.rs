@@ -14,16 +14,16 @@ pub struct Server {
 impl Server {
     pub fn new(sender: SyncSender<Message>) -> Server {
         Server {
-            sender: sender,
+            sender,
             write_streams: HashMap::new(),
         }
     }
 
     pub fn handle_incoming_messages(&mut self, message: Message) -> std::io::Result<usize> {
-        for (id, p) in self.write_streams.iter_mut() {
+        for (id, write_stream) in self.write_streams.iter_mut() {
             if id != &message.author_id {
                 let content = &message.content;
-                p.write(content.as_bytes())?;
+                write_stream.write(content.as_bytes())?;
             }
         }
         Ok(0)
@@ -54,7 +54,6 @@ impl Server {
             write_stream,
             number_of_messages: 0,
             sender: self.sender.clone(),
-            // receiver: rx,
         };
         self.write_streams.insert(id, write_stream2);
         Ok(part)
