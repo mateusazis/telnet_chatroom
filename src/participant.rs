@@ -1,4 +1,3 @@
-use std::string::FromUtf8Error;
 use std::sync::mpsc::SyncSender;
 
 pub struct Message {
@@ -17,13 +16,13 @@ pub struct Participant {
 }
 
 impl Participant {
-    pub fn read_line(&mut self) -> Result<String, FromUtf8Error> {
+    pub fn read_line(&mut self) -> std::io::Result<String> {
         crate::io_utils::read_line(&mut self.read_stream)
     }
 
     pub fn run_loop(&mut self) -> std::io::Result<usize> {
         let mut line = self.read_line().expect("reading line");
-        while !line.starts_with("quit") {
+        while !line.eq("quit") {
             let msg_out = format!(
                 "{} ({}): {}\n",
                 self.name,
