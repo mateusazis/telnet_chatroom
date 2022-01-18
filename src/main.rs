@@ -1,4 +1,3 @@
-mod io_utils;
 mod participant;
 mod server;
 mod telnet_chatroom;

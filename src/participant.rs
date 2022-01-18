@@ -1,3 +1,4 @@
+use std::io::{BufReader, Lines};
 use std::sync::mpsc::SyncSender;
 
 pub struct Message {
@@ -9,14 +10,29 @@ pub struct Message {
 pub struct Participant {
     pub name: String,
     pub id: i32,
-    pub read_stream: std::net::TcpStream,
+    pub read_lines: Lines<BufReader<std::net::TcpStream>>,
     pub number_of_messages: i32,
     pub sender: SyncSender<Message>,
 }
 
 impl Participant {
+    pub fn new(
+        name: String,
+        id: i32,
+        read_lines: Lines<BufReader<std::net::TcpStream>>,
+        sender: SyncSender<Message>,
+    ) -> Participant {
+        Participant {
+            name,
+            id,
+            sender,
+            number_of_messages: 0,
+            read_lines,
+        }
+    }
+
     pub fn read_line(&mut self) -> std::io::Result<String> {
-        crate::io_utils::read_line(&mut self.read_stream)
+        self.read_lines.next().unwrap()
     }
 
     pub fn run_loop(&mut self) -> std::io::Result<usize> {

@@ -2,6 +2,8 @@ use crate::participant::Message;
 use crate::participant::Participant;
 use std::clone::Clone;
 use std::collections::HashMap;
+use std::io::BufRead;
+use std::io::BufReader;
 use std::io::Write;
 use std::net::TcpStream;
 use std::sync::mpsc::SyncSender;
@@ -33,25 +35,17 @@ impl Server {
         self.write_streams.remove(id).unwrap();
     }
 
-    pub fn handle_client(
-        &mut self,
-        mut stream: std::net::TcpStream,
-    ) -> std::io::Result<Participant> {
-        let name = {
-            stream.write(b"What is your name?\n")?;
-            crate::io_utils::read_line(&mut stream).expect("reading line")
-        };
+    pub fn handle_client(&mut self, stream: std::net::TcpStream) -> std::io::Result<Participant> {
+        let mut write_stream = stream.try_clone().unwrap();
+        let buffer = BufReader::new(stream);
+        let mut lines = buffer.lines();
+
+        write_stream.write(b"What is your name?\n")?;
+        let name = lines.next().unwrap().unwrap();
 
         let id = rand::random::<i32>();
-        let write_stream = stream.try_clone().unwrap();
 
-        let part = Participant {
-            name,
-            id,
-            read_stream: stream,
-            number_of_messages: 0,
-            sender: self.sender.clone(),
-        };
+        let part = Participant::new(name, id, lines, self.sender.clone());
         self.write_streams.insert(id, write_stream);
         Ok(part)
     }
