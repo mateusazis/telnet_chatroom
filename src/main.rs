@@ -1,7 +1,5 @@
-mod participant;
-mod server;
-mod telnet_chatroom;
+mod threaded;
 
 fn main() {
-    telnet_chatroom::main();
+    threaded::telnet_chatroom::main();
 }

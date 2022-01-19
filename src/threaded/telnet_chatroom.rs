@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 fn serv() -> std::io::Result<usize> {
     let (tx, rx) = mpsc::sync_channel(1024 * 1024);
-    let server = Arc::new(Mutex::new(crate::server::Server::new(tx)));
+    let server = Arc::new(Mutex::new(crate::threaded::server::Server::new(tx)));
     let server_clone = server.clone();
     let listener = std::net::TcpListener::bind("127.0.0.1:8080").unwrap();
     listener.set_nonblocking(false).expect("set non blocking");

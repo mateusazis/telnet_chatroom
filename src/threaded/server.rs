@@ -1,6 +1,6 @@
-use crate::participant::Message;
-use crate::participant::Participant;
-use crate::participant::ParticipantInfo;
+use crate::threaded::participant::Message;
+use crate::threaded::participant::Participant;
+use crate::threaded::participant::ParticipantInfo;
 use std::clone::Clone;
 use std::collections::HashMap;
 use std::io::BufRead;
