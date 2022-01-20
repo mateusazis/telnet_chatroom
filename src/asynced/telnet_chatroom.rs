@@ -4,7 +4,7 @@ use futures::executor::block_on;
 use std::sync::Arc;
 
 async fn serv() -> std::io::Result<usize> {
-    let (tx, mut rx) = futures::channel::mpsc::channel(1024 * 1024);
+    let (tx, mut rx) = futures::channel::mpsc::unbounded();
     let server = Arc::new(Mutex::new(crate::asynced::server::Server::new(tx)));
     let server_clone = server.clone();
     let listener = async_std::net::TcpListener::bind("127.0.0.1:8080").await?;

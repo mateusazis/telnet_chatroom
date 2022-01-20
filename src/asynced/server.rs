@@ -6,18 +6,18 @@ use async_std::io::BufReader;
 use async_std::io::WriteExt;
 use async_std::net::TcpStream;
 use async_std::stream::StreamExt;
-use futures::channel::mpsc::Sender;
+use futures::channel::mpsc::UnboundedSender;
 use std::clone::Clone;
 use std::collections::HashMap;
 
 pub struct Server {
-    sender: Sender<Message>,
+    sender: UnboundedSender<Message>,
     write_streams: HashMap<i32, TcpStream>,
     participants: HashMap<i32, ParticipantInfo>,
 }
 
 impl Server {
-    pub fn new(sender: Sender<Message>) -> Server {
+    pub fn new(sender: UnboundedSender<Message>) -> Server {
         Server {
             sender,
             write_streams: HashMap::new(),

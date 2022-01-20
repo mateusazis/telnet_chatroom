@@ -1,6 +1,6 @@
 use async_std::io::{BufReader, Lines};
 use async_std::stream::StreamExt;
-use futures::channel::mpsc::Sender;
+use futures::channel::mpsc::UnboundedSender;
 
 #[derive(Debug)]
 pub struct Message {
@@ -29,7 +29,7 @@ impl Clone for ParticipantInfo {
 pub struct Participant {
     pub info: ParticipantInfo,
     pub read_lines: Lines<BufReader<async_std::net::TcpStream>>,
-    pub sender: Sender<Message>,
+    pub sender: UnboundedSender<Message>,
 }
 
 impl Participant {
@@ -37,7 +37,7 @@ impl Participant {
         name: String,
         id: i32,
         read_lines: Lines<BufReader<async_std::net::TcpStream>>,
-        sender: Sender<Message>,
+        sender: UnboundedSender<Message>,
     ) -> Participant {
         Participant {
             info: ParticipantInfo {
@@ -73,7 +73,7 @@ impl Participant {
                     content: msg_out,
                     author: self.info.clone(),
                 })
-                .unwrap();
+                .expect("should notify of new message");
             line = self.read_line().await.expect("reading line");
         }
 
