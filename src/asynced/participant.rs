@@ -2,6 +2,11 @@ use async_std::io::{BufReader, Lines};
 use async_std::stream::StreamExt;
 use futures::channel::mpsc::UnboundedSender;
 
+pub enum ExitType {
+    ConnectionAborted,
+    GracefulTermination,
+}
+
 #[derive(Debug)]
 pub struct Message {
     pub content: String,
@@ -50,17 +55,27 @@ impl Participant {
         }
     }
 
-    pub async fn read_line(&mut self) -> Result<String, String> {
+    pub async fn read_line(&mut self) -> Result<Option<String>, String> {
         let line = self.read_lines.next().await;
-        if let Some(Ok(line2)) = line {
-            return Ok(line2);
+        match line {
+            Some(Ok(line2)) => return Ok(Some(line2)),
+            None => Ok(None),
+            Some(Err(err)) => {
+                let err = err as async_std::io::Error;
+                match err.kind() {
+                    async_std::io::ErrorKind::ConnectionReset => Ok(None),
+                    _default => Err(err.to_string()),
+                }
+            }
         }
-        Err(String::from("something went wrong"))
     }
 
-    pub async fn run_loop(&mut self) -> std::io::Result<usize> {
-        let mut line = self.read_line().await.expect("reading line");
-        while !line.eq("quit") {
+    pub async fn run_loop(&mut self) -> std::io::Result<ExitType> {
+        let mut line_read = self.read_line().await.expect("reading line");
+        while let Some(line) = line_read {
+            if line.eq("quit") {
+                return Ok(ExitType::GracefulTermination);
+            }
             let msg_out = format!(
                 "{} ({}): {}\n",
                 self.info.name,
@@ -74,9 +89,9 @@ impl Participant {
                     author: self.info.clone(),
                 })
                 .expect("should notify of new message");
-            line = self.read_line().await.expect("reading line");
+            line_read = self.read_line().await.expect("reading line");
         }
 
-        Ok(0)
+        Ok(ExitType::ConnectionAborted)
     }
 }

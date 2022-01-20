@@ -18,9 +18,13 @@ async fn serv() -> std::io::Result<usize> {
             async_std::task::spawn(async move {
                 let mut participant = server.lock().await.handle_client(stream).await.unwrap();
 
-                participant.run_loop().await.expect("run loop");
+                let exit_type = participant.run_loop().await.expect("run loop");
 
-                server.lock().await.remove(&participant.info.id).await
+                server
+                    .lock()
+                    .await
+                    .remove(&participant.info.id, exit_type)
+                    .await
             });
         }
     });

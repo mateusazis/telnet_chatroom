@@ -1,3 +1,4 @@
+use crate::asynced::participant::ExitType;
 use crate::asynced::participant::Message;
 use crate::asynced::participant::Participant;
 use crate::asynced::participant::ParticipantInfo;
@@ -37,9 +38,15 @@ impl Server {
         Ok(0)
     }
 
-    pub async fn remove(&mut self, id: &i32) {
+    pub async fn remove(&mut self, id: &i32, exit_type: ExitType) {
         let mut stream = self.write_streams.remove(id).unwrap();
-        stream.flush().await.unwrap();
+        if let ExitType::GracefulTermination = exit_type {
+            // Do not flush if the stream is closed.
+            stream
+                .flush()
+                .await
+                .expect("should flush message when client quits.");
+        }
         self.participants.remove(id).unwrap();
     }
 
