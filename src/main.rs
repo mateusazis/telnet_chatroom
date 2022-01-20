@@ -1,5 +1,5 @@
+mod asynced;
 mod threaded;
-
 fn main() {
-    threaded::telnet_chatroom::main();
+    asynced::telnet_chatroom::main();
 }
