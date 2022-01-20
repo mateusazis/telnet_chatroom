@@ -3,16 +3,17 @@ use crate::asynced::participant::Participant;
 use crate::asynced::participant::ParticipantInfo;
 use async_std::io::prelude::BufReadExt;
 use async_std::io::BufReader;
-use async_std::io::WriteExt;
+use async_std::io::BufWriter;
 use async_std::net::TcpStream;
 use async_std::stream::StreamExt;
 use futures::channel::mpsc::UnboundedSender;
+use futures::AsyncWriteExt;
 use std::clone::Clone;
 use std::collections::HashMap;
 
 pub struct Server {
     sender: UnboundedSender<Message>,
-    write_streams: HashMap<i32, TcpStream>,
+    write_streams: HashMap<i32, BufWriter<TcpStream>>,
     participants: HashMap<i32, ParticipantInfo>,
 }
 
@@ -29,15 +30,16 @@ impl Server {
         for (id, write_stream) in self.write_streams.iter_mut() {
             if id != &message.author.id {
                 let content = &message.content;
-                write_stream.write(content.as_bytes()).await?;
+                write_stream.write_all(content.as_bytes()).await?;
             }
         }
         self.participants.insert(message.author.id, message.author);
         Ok(0)
     }
 
-    pub fn remove(&mut self, id: &i32) {
-        self.write_streams.remove(id).unwrap();
+    pub async fn remove(&mut self, id: &i32) {
+        let mut stream = self.write_streams.remove(id).unwrap();
+        stream.flush().await.unwrap();
         self.participants.remove(id).unwrap();
     }
 
@@ -45,11 +47,12 @@ impl Server {
         &mut self,
         stream: async_std::net::TcpStream,
     ) -> std::io::Result<Participant> {
-        let mut write_stream = stream.clone();
+        let mut write_stream = BufWriter::new(stream.clone());
         let buffer = BufReader::new(stream);
         let mut lines = buffer.lines();
 
-        write_stream.write(b"What is your name?\n").await?;
+        write_stream.write_all(b"What is your name?\n").await?;
+        write_stream.flush().await?;
         let name = lines.next().await.unwrap().unwrap();
 
         let id = rand::random::<i32>();
@@ -73,7 +76,7 @@ impl Server {
             initial_message.push('\n');
         }
         initial_message += "\n";
-        write_stream.write(initial_message.as_bytes()).await?;
+        write_stream.write_all(initial_message.as_bytes()).await?;
 
         let part = Participant::new(name, id, lines, self.sender.clone());
         self.write_streams.insert(id, write_stream);

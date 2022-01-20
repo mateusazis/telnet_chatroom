@@ -5,13 +5,14 @@ use std::clone::Clone;
 use std::collections::HashMap;
 use std::io::BufRead;
 use std::io::BufReader;
+use std::io::BufWriter;
 use std::io::Write;
 use std::net::TcpStream;
 use std::sync::mpsc::SyncSender;
 
 pub struct Server {
     sender: SyncSender<Message>,
-    write_streams: HashMap<i32, TcpStream>,
+    write_streams: HashMap<i32, BufWriter<TcpStream>>,
     participants: HashMap<i32, ParticipantInfo>,
 }
 
@@ -36,16 +37,18 @@ impl Server {
     }
 
     pub fn remove(&mut self, id: &i32) {
-        self.write_streams.remove(id).unwrap();
+        let mut write_stream = self.write_streams.remove(id).unwrap();
+        write_stream.flush().unwrap();
         self.participants.remove(id).unwrap();
     }
 
     pub fn handle_client(&mut self, stream: std::net::TcpStream) -> std::io::Result<Participant> {
-        let mut write_stream = stream.try_clone().unwrap();
+        let mut write_stream = BufWriter::new(stream.try_clone().unwrap());
         let buffer = BufReader::new(stream);
         let mut lines = buffer.lines();
 
-        write_stream.write(b"What is your name?\n")?;
+        write_stream.write_all(b"What is your name?\n")?;
+        write_stream.flush()?;
         let name = lines.next().unwrap().unwrap();
 
         let id = rand::random::<i32>();
@@ -69,7 +72,7 @@ impl Server {
             initial_message.push('\n');
         }
         initial_message += "\n";
-        write_stream.write(initial_message.as_bytes())?;
+        write_stream.write_all(initial_message.as_bytes())?;
 
         let part = Participant::new(name, id, lines, self.sender.clone());
         self.write_streams.insert(id, write_stream);

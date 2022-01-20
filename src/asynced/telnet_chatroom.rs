@@ -20,7 +20,7 @@ async fn serv() -> std::io::Result<usize> {
 
                 participant.run_loop().await.expect("run loop");
 
-                server.lock().await.remove(&participant.info.id)
+                server.lock().await.remove(&participant.info.id).await
             });
         }
     });
