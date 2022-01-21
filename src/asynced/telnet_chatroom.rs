@@ -30,9 +30,9 @@ async fn serv() -> std::io::Result<usize> {
     });
 
     loop {
-        if let Some(message) = rx.next().await {
+        if let Some(event) = &rx.next().await {
             let mut s = server_clone.lock().await;
-            s.handle_incoming_messages(message).await.unwrap();
+            s.handle_event(event).await.unwrap();
         }
     }
 }

@@ -8,9 +8,14 @@ pub enum ExitType {
 }
 
 #[derive(Debug)]
-pub struct Message {
-    pub content: String,
+pub struct Event {
+    pub event_type: EventType,
     pub author: ParticipantInfo,
+}
+
+#[derive(Debug)]
+pub enum EventType {
+    Message(String),
 }
 
 #[derive(Debug)]
@@ -34,7 +39,7 @@ impl Clone for ParticipantInfo {
 pub struct Participant {
     pub info: ParticipantInfo,
     pub read_lines: Lines<BufReader<async_std::net::TcpStream>>,
-    pub sender: UnboundedSender<Message>,
+    pub sender: UnboundedSender<Event>,
 }
 
 impl Participant {
@@ -42,7 +47,7 @@ impl Participant {
         name: String,
         id: i32,
         read_lines: Lines<BufReader<async_std::net::TcpStream>>,
-        sender: UnboundedSender<Message>,
+        sender: UnboundedSender<Event>,
     ) -> Participant {
         Participant {
             info: ParticipantInfo {
@@ -84,8 +89,8 @@ impl Participant {
             );
             self.info.number_of_messages += 1;
             self.sender
-                .start_send(Message {
-                    content: msg_out,
+                .start_send(Event {
+                    event_type: EventType::Message(msg_out),
                     author: self.info.clone(),
                 })
                 .expect("should notify of new message");

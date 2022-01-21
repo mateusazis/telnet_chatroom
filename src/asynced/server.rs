@@ -1,5 +1,6 @@
+use crate::asynced::participant::Event;
+use crate::asynced::participant::EventType;
 use crate::asynced::participant::ExitType;
-use crate::asynced::participant::Message;
 use crate::asynced::participant::Participant;
 use crate::asynced::participant::ParticipantInfo;
 use async_std::io::prelude::BufReadExt;
@@ -13,13 +14,13 @@ use std::clone::Clone;
 use std::collections::HashMap;
 
 pub struct Server {
-    sender: UnboundedSender<Message>,
+    sender: UnboundedSender<Event>,
     write_streams: HashMap<i32, BufWriter<TcpStream>>,
     participants: HashMap<i32, ParticipantInfo>,
 }
 
 impl Server {
-    pub fn new(sender: UnboundedSender<Message>) -> Server {
+    pub fn new(sender: UnboundedSender<Event>) -> Server {
         Server {
             sender,
             write_streams: HashMap::new(),
@@ -27,14 +28,16 @@ impl Server {
         }
     }
 
-    pub async fn handle_incoming_messages(&mut self, message: Message) -> std::io::Result<usize> {
+    pub async fn handle_event(&mut self, event: &Event) -> std::io::Result<usize> {
+        let EventType::Message(content) = &event.event_type;
         for (id, write_stream) in self.write_streams.iter_mut() {
-            if id != &message.author.id {
-                let content = &message.content;
+            if id != &event.author.id {
                 write_stream.write_all(content.as_bytes()).await?;
+                write_stream.flush().await?;
             }
         }
-        self.participants.insert(message.author.id, message.author);
+        self.participants
+            .insert(event.author.id, event.author.clone());
         Ok(0)
     }
 
