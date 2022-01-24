@@ -3,7 +3,7 @@ use async_std::sync::Mutex;
 use futures::executor::block_on;
 use std::sync::Arc;
 
-async fn serv() -> std::io::Result<usize> {
+async fn serv() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, mut rx) = futures::channel::mpsc::unbounded();
     let server = Arc::new(Mutex::new(crate::asynced::server::Server::new(tx)));
     let server_clone = server.clone();
@@ -25,6 +25,7 @@ async fn serv() -> std::io::Result<usize> {
                     .await
                     .remove(&participant.info.id, exit_type)
                     .await
+                    .expect("should remove participant");
             });
         }
     });
@@ -32,11 +33,11 @@ async fn serv() -> std::io::Result<usize> {
     loop {
         if let Some(event) = &rx.next().await {
             let mut s = server_clone.lock().await;
-            s.handle_event(event).await.unwrap();
+            s.handle_event(event).await?;
         }
     }
 }
 
 pub fn main() {
-    block_on(serv()).expect("server");
+    block_on(serv()).expect("server should run");
 }

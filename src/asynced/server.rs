@@ -46,7 +46,6 @@ impl Server {
                     author_stream
                         .write("You are the only member of this channel.\n".as_bytes())
                         .await?;
-                    return Ok(0);
                 }
                 let mut msg = String::from("Participants in the room:\n");
                 for (id, info) in self.participants.iter() {
@@ -63,29 +62,31 @@ impl Server {
         Ok(0)
     }
 
-    pub async fn remove(&mut self, id: &i32, exit_type: ExitType) {
+    pub async fn remove(
+        &mut self,
+        id: &i32,
+        exit_type: ExitType,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let mut stream = self.write_streams.remove(id).unwrap();
         if let ExitType::GracefulTermination = exit_type {
             // Do not flush if the stream is closed.
-            stream
-                .flush()
-                .await
-                .expect("should flush message when client quits.");
+            stream.flush().await?;
         }
-        self.participants.remove(id).unwrap();
+        self.participants.remove(id);
+        Ok(())
     }
 
     pub async fn handle_client(
         &mut self,
         stream: async_std::net::TcpStream,
-    ) -> std::io::Result<Participant> {
+    ) -> Result<Participant, Box<dyn std::error::Error>> {
         let mut write_stream = BufWriter::new(stream.clone());
         let buffer = BufReader::new(stream);
         let mut lines = buffer.lines();
 
         write_stream.write_all(b"What is your name?\n").await?;
         write_stream.flush().await?;
-        let name = lines.next().await.unwrap().unwrap();
+        let name = lines.next().await.unwrap()?;
 
         let id = rand::random::<i32>();
 
@@ -109,6 +110,7 @@ impl Server {
         }
         initial_message += "\n";
         write_stream.write_all(initial_message.as_bytes()).await?;
+        write_stream.flush().await?;
 
         let part = Participant::new(name, id, lines, self.sender.clone());
         self.write_streams.insert(id, write_stream);

@@ -76,20 +76,18 @@ impl Participant {
         }
     }
 
-    pub async fn run_loop(&mut self) -> std::io::Result<ExitType> {
-        let mut line_read = self.read_line().await.expect("reading line");
+    pub async fn run_loop(&mut self) -> Result<ExitType, Box<dyn std::error::Error>> {
+        let mut line_read = self.read_line().await?;
         while let Some(line) = line_read {
             match line.as_ref() {
                 "quit" => {
                     return Ok(ExitType::GracefulTermination);
                 }
                 "list" => {
-                    self.sender
-                        .start_send(Event {
-                            author: self.info.clone(),
-                            event_type: EventType::ListParticipants,
-                        })
-                        .expect("should send event");
+                    self.sender.start_send(Event {
+                        author: self.info.clone(),
+                        event_type: EventType::ListParticipants,
+                    })?;
                 }
                 msg => {
                     let msg_out = format!(
@@ -99,16 +97,14 @@ impl Participant {
                         msg
                     );
                     self.info.number_of_messages += 1;
-                    self.sender
-                        .start_send(Event {
-                            event_type: EventType::Message(msg_out),
-                            author: self.info.clone(),
-                        })
-                        .expect("should notify of new message");
+                    self.sender.start_send(Event {
+                        event_type: EventType::Message(msg_out),
+                        author: self.info.clone(),
+                    })?;
                 }
             };
 
-            line_read = self.read_line().await.expect("reading line");
+            line_read = self.read_line().await?;
         }
 
         Ok(ExitType::ConnectionAborted)
