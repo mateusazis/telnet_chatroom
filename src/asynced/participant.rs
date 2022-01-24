@@ -16,6 +16,7 @@ pub struct Event {
 #[derive(Debug)]
 pub enum EventType {
     Message(String),
+    ListParticipants,
 }
 
 #[derive(Debug)]
@@ -78,22 +79,35 @@ impl Participant {
     pub async fn run_loop(&mut self) -> std::io::Result<ExitType> {
         let mut line_read = self.read_line().await.expect("reading line");
         while let Some(line) = line_read {
-            if line.eq("quit") {
-                return Ok(ExitType::GracefulTermination);
-            }
-            let msg_out = format!(
-                "{} ({}): {}\n",
-                self.info.name,
-                self.info.number_of_messages + 1,
-                line
-            );
-            self.info.number_of_messages += 1;
-            self.sender
-                .start_send(Event {
-                    event_type: EventType::Message(msg_out),
-                    author: self.info.clone(),
-                })
-                .expect("should notify of new message");
+            match line.as_ref() {
+                "quit" => {
+                    return Ok(ExitType::GracefulTermination);
+                }
+                "list" => {
+                    self.sender
+                        .start_send(Event {
+                            author: self.info.clone(),
+                            event_type: EventType::ListParticipants,
+                        })
+                        .expect("should send event");
+                }
+                msg => {
+                    let msg_out = format!(
+                        "{} ({}): {}\n",
+                        self.info.name,
+                        self.info.number_of_messages + 1,
+                        msg
+                    );
+                    self.info.number_of_messages += 1;
+                    self.sender
+                        .start_send(Event {
+                            event_type: EventType::Message(msg_out),
+                            author: self.info.clone(),
+                        })
+                        .expect("should notify of new message");
+                }
+            };
+
             line_read = self.read_line().await.expect("reading line");
         }
 

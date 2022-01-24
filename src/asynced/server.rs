@@ -29,15 +29,37 @@ impl Server {
     }
 
     pub async fn handle_event(&mut self, event: &Event) -> std::io::Result<usize> {
-        let EventType::Message(content) = &event.event_type;
-        for (id, write_stream) in self.write_streams.iter_mut() {
-            if id != &event.author.id {
-                write_stream.write_all(content.as_bytes()).await?;
-                write_stream.flush().await?;
+        match &event.event_type {
+            EventType::Message(content) => {
+                for (id, write_stream) in self.write_streams.iter_mut() {
+                    if id != &event.author.id {
+                        write_stream.write_all(content.as_bytes()).await?;
+                        write_stream.flush().await?;
+                    }
+                }
+                self.participants
+                    .insert(event.author.id, event.author.clone());
+            }
+            EventType::ListParticipants => {
+                let author_stream = self.write_streams.get_mut(&event.author.id).unwrap();
+                if self.participants.len() == 1 {
+                    author_stream
+                        .write("You are the only member of this channel.\n".as_bytes())
+                        .await?;
+                    return Ok(0);
+                }
+                let mut msg = String::from("Participants in the room:\n");
+                for (id, info) in self.participants.iter() {
+                    if id != &event.author.id {
+                        msg.push_str(
+                            format!("\t{} ({})\n", info.name, info.number_of_messages).as_str(),
+                        );
+                    }
+                }
+                author_stream.write(msg.as_bytes()).await?;
+                author_stream.flush().await?;
             }
         }
-        self.participants
-            .insert(event.author.id, event.author.clone());
         Ok(0)
     }
 
