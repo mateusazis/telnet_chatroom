@@ -12,7 +12,6 @@ use futures::channel::mpsc::UnboundedSender;
 use futures::AsyncWriteExt;
 use std::clone::Clone;
 use std::collections::HashMap;
-
 pub struct Server {
     sender: UnboundedSender<Event>,
     write_streams: HashMap<i32, BufWriter<TcpStream>>,
@@ -28,15 +27,26 @@ impl Server {
         }
     }
 
-    pub async fn handle_event(&mut self, event: &Event) -> std::io::Result<usize> {
+    pub async fn handle_event(&mut self, event: &Event) -> Result<(), Box<dyn std::error::Error>> {
         match &event.event_type {
             EventType::Message(content) => {
+                let mut write_futures = Vec::new();
                 for (id, write_stream) in self.write_streams.iter_mut() {
                     if id != &event.author.id {
-                        write_stream.write_all(content.as_bytes()).await?;
-                        write_stream.flush().await?;
+                        write_futures.push(write_stream.write_all(content.as_bytes()));
                     }
                 }
+
+                futures::future::try_join_all(write_futures).await?;
+
+                let mut flush_futures = Vec::new();
+                for (id, write_stream) in self.write_streams.iter_mut() {
+                    if id != &event.author.id {
+                        flush_futures.push(write_stream.flush());
+                    }
+                }
+                futures::future::try_join_all(flush_futures).await?;
+
                 self.participants
                     .insert(event.author.id, event.author.clone());
             }
@@ -59,7 +69,7 @@ impl Server {
                 author_stream.flush().await?;
             }
         }
-        Ok(0)
+        Ok(())
     }
 
     pub async fn remove(
