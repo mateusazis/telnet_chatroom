@@ -56,16 +56,17 @@ impl Server {
                     author_stream
                         .write("You are the only member of this channel.\n".as_bytes())
                         .await?;
-                }
-                let mut msg = String::from("Participants in the room:\n");
-                for (id, info) in self.participants.iter() {
-                    if id != &event.author.id {
-                        msg.push_str(
-                            format!("\t{} ({})\n", info.name, info.number_of_messages).as_str(),
-                        );
+                } else {
+                    let mut msg = String::from("Participants in the room:\n");
+                    for (id, info) in self.participants.iter() {
+                        if id != &event.author.id {
+                            msg.push_str(
+                                format!("\t{} ({})\n", info.name, info.number_of_messages).as_str(),
+                            );
+                        }
                     }
+                    author_stream.write(msg.as_bytes()).await?;
                 }
-                author_stream.write(msg.as_bytes()).await?;
                 author_stream.flush().await?;
             }
         }
