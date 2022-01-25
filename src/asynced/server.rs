@@ -54,7 +54,7 @@ impl Server {
                 let author_stream = self.write_streams.get_mut(&event.author.id).unwrap();
                 if self.participants.len() == 1 {
                     author_stream
-                        .write("You are the only member of this channel.\n".as_bytes())
+                        .write_all("You are the only member of this channel.\n".as_bytes())
                         .await?;
                 } else {
                     let mut msg = String::from("Participants in the room:\n");
@@ -65,7 +65,7 @@ impl Server {
                             );
                         }
                     }
-                    author_stream.write(msg.as_bytes()).await?;
+                    author_stream.write_all(msg.as_bytes()).await?;
                 }
                 author_stream.flush().await?;
             }
