@@ -10,6 +10,7 @@ use futures::channel::mpsc::UnboundedSender;
 use futures::AsyncWriteExt;
 use std::clone::Clone;
 use std::collections::HashMap;
+
 pub struct Server {
     sender: UnboundedSender<Event>,
     write_streams: HashMap<i32, TcpStream>,
@@ -47,14 +48,20 @@ impl Server {
                         .write_all("You are the only member of this channel.\n".as_bytes())
                         .await?;
                 } else {
+                    let mut others: Vec<&ParticipantInfo> = self
+                        .participants
+                        .iter()
+                        .filter(|(id, _)| id != &&event.author.id)
+                        .map(|(_, p)| p)
+                        .collect();
+                    others.sort_by_key(|p| p.name.clone());
+
                     let mut msg = String::from("Participants in the room:\n");
-                    for (id, info) in self.participants.iter() {
-                        if id != &event.author.id {
-                            msg.push_str(
-                                format!("\t{} ({})\n", info.name, info.number_of_messages).as_str(),
-                            );
-                        }
+                    for info in others.iter() {
+                        let part = format!("\t{} ({})\n", info.name, info.number_of_messages);
+                        msg.push_str(part.as_str());
                     }
+
                     author_stream.write_all(msg.as_bytes()).await?;
                 }
             }
