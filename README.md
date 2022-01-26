@@ -1,6 +1,8 @@
 # Telnet Chatroom
 
-**Telnet Chatroom** is a sample application in Rust to develop a chat server based on Telnet. Participants can connect to the server, pick a username, exchange messages with all other users.
+**Telnet Chatroom** is a sample application in Rust to develop a chat server based on Telnet. I made it to exercise concepts of Rust as a new learning language, including ownership & borrowing, async programming etc.
+
+Participants can connect to the server, pick a username, exchange messages with all other users.
 
 Usage:
 
@@ -14,9 +16,7 @@ Note: commands typed by the user are in **bold**; server output is in _italic_.
 Server side:
 
 <pre>
-<code>
-<b>cargo run</b>
-</code>
+<code><b>cargo run</b></code>
 </pre>
 
 Client 1:
