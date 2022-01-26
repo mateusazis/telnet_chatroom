@@ -2,11 +2,6 @@ use async_std::io::{BufReader, Lines};
 use async_std::stream::StreamExt;
 use futures::channel::mpsc::UnboundedSender;
 
-pub enum ExitType {
-    ConnectionAborted,
-    GracefulTermination,
-}
-
 #[derive(Debug)]
 pub struct Event {
     pub event_type: EventType,
@@ -76,12 +71,12 @@ impl Participant {
         }
     }
 
-    pub async fn run_loop(&mut self) -> Result<ExitType, Box<dyn std::error::Error>> {
+    pub async fn run_loop(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let mut line_read = self.read_line().await?;
         while let Some(line) = line_read {
             match line.as_ref() {
                 "quit" => {
-                    return Ok(ExitType::GracefulTermination);
+                    return Ok(());
                 }
                 "list" => {
                     self.sender.start_send(Event {
@@ -107,6 +102,6 @@ impl Participant {
             line_read = self.read_line().await?;
         }
 
-        Ok(ExitType::ConnectionAborted)
+        Ok(())
     }
 }

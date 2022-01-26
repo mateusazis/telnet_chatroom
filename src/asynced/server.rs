@@ -1,11 +1,9 @@
 use crate::asynced::participant::Event;
 use crate::asynced::participant::EventType;
-use crate::asynced::participant::ExitType;
 use crate::asynced::participant::Participant;
 use crate::asynced::participant::ParticipantInfo;
 use async_std::io::prelude::BufReadExt;
 use async_std::io::BufReader;
-use async_std::io::BufWriter;
 use async_std::net::TcpStream;
 use async_std::stream::StreamExt;
 use futures::channel::mpsc::UnboundedSender;
@@ -14,7 +12,7 @@ use std::clone::Clone;
 use std::collections::HashMap;
 pub struct Server {
     sender: UnboundedSender<Event>,
-    write_streams: HashMap<i32, BufWriter<TcpStream>>,
+    write_streams: HashMap<i32, TcpStream>,
     participants: HashMap<i32, ParticipantInfo>,
 }
 
@@ -39,14 +37,6 @@ impl Server {
 
                 futures::future::try_join_all(write_futures).await?;
 
-                let mut flush_futures = Vec::new();
-                for (id, write_stream) in self.write_streams.iter_mut() {
-                    if id != &event.author.id {
-                        flush_futures.push(write_stream.flush());
-                    }
-                }
-                futures::future::try_join_all(flush_futures).await?;
-
                 self.participants
                     .insert(event.author.id, event.author.clone());
             }
@@ -67,36 +57,24 @@ impl Server {
                     }
                     author_stream.write_all(msg.as_bytes()).await?;
                 }
-                author_stream.flush().await?;
             }
         }
         Ok(())
     }
 
-    pub async fn remove(
-        &mut self,
-        id: &i32,
-        exit_type: ExitType,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let mut stream = self.write_streams.remove(id).unwrap();
-        if let ExitType::GracefulTermination = exit_type {
-            // Do not flush if the stream is closed.
-            stream.flush().await?;
-        }
+    pub fn remove(&mut self, id: &i32) {
         self.participants.remove(id);
-        Ok(())
     }
 
     pub async fn handle_client(
         &mut self,
         stream: async_std::net::TcpStream,
     ) -> Result<Option<Participant>, Box<dyn std::error::Error>> {
-        let mut write_stream = BufWriter::new(stream.clone());
+        let mut write_stream = stream.clone();
         let buffer = BufReader::new(stream);
         let mut lines = buffer.lines();
 
         write_stream.write_all(b"What is your name?\n").await?;
-        write_stream.flush().await?;
         let line = lines.next().await;
         if let None = line {
             return Ok(None);
@@ -125,7 +103,6 @@ impl Server {
         }
         initial_message += "\n";
         write_stream.write_all(initial_message.as_bytes()).await?;
-        write_stream.flush().await?;
 
         let part = Participant::new(name, id, lines, self.sender.clone());
         self.write_streams.insert(id, write_stream);

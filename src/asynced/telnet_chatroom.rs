@@ -13,13 +13,9 @@ async fn run_participant(
     }
     let mut participant = participant.unwrap();
 
-    let exit_type = participant.run_loop().await?;
+    participant.run_loop().await?;
 
-    server
-        .lock()
-        .await
-        .remove(&participant.info.id, exit_type)
-        .await?;
+    server.lock().await.remove(&participant.info.id);
     Ok(())
 }
 
