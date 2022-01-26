@@ -7,7 +7,11 @@ async fn run_participant(
     server: Arc<Mutex<crate::asynced::server::Server>>,
     stream: async_std::net::TcpStream,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let mut participant = server.lock().await.handle_client(stream).await?;
+    let participant = server.lock().await.handle_client(stream).await?;
+    if let None = participant {
+        return Ok(());
+    }
+    let mut participant = participant.unwrap();
 
     let exit_type = participant.run_loop().await?;
 

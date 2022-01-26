@@ -90,14 +90,18 @@ impl Server {
     pub async fn handle_client(
         &mut self,
         stream: async_std::net::TcpStream,
-    ) -> Result<Participant, Box<dyn std::error::Error>> {
+    ) -> Result<Option<Participant>, Box<dyn std::error::Error>> {
         let mut write_stream = BufWriter::new(stream.clone());
         let buffer = BufReader::new(stream);
         let mut lines = buffer.lines();
 
         write_stream.write_all(b"What is your name?\n").await?;
         write_stream.flush().await?;
-        let name = lines.next().await.unwrap()?;
+        let line = lines.next().await;
+        if let None = line {
+            return Ok(None);
+        }
+        let name = line.unwrap()?;
 
         let id = rand::random::<i32>();
 
@@ -126,6 +130,6 @@ impl Server {
         let part = Participant::new(name, id, lines, self.sender.clone());
         self.write_streams.insert(id, write_stream);
         self.participants.insert(id, part.info.clone());
-        Ok(part)
+        Ok(Some(part))
     }
 }
