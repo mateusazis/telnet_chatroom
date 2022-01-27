@@ -31,10 +31,14 @@ async fn serv() -> Result<(), Box<dyn std::error::Error>> {
     let (tx, mut rx) = futures::channel::mpsc::unbounded();
     let server = Arc::new(Mutex::new(crate::asynced::server::Server::new(tx)));
     let server_clone = server.clone();
-    let listener = async_std::net::TcpListener::bind("127.0.0.1:8080").await?;
+    let host = "0.0.0.0";
+    let port = 8080;
+    let address = format!("{host}:{port}");
+    let listener = async_std::net::TcpListener::bind(address.clone()).await?;
 
     async_std::task::spawn(async move {
         let mut incoming = listener.incoming();
+        println!("Server running at {address} and waiting for incoming connections...");
         while let Some(stream) = incoming.next().await {
             let stream = stream.unwrap();
             let server = server.clone();
